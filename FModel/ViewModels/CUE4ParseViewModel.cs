@@ -93,6 +93,7 @@ using UE4Config.Parsing;
 using static CUE4Parse.UE4.Versions.EGame;
 using Application = System.Windows.Application;
 using FGuid = CUE4Parse.UE4.Objects.Core.Misc.FGuid;
+using CUE4Parse.UE4.VirtualFileSystem;
 
 namespace FModel.ViewModels;
 
@@ -723,7 +724,7 @@ public class CUE4ParseViewModel : ViewModel
 
                 for (var i = result.InclusiveStart; i < result.ExclusiveEnd; i++)
                 {
-                    if (CheckExport(cancellationToken, result.Package, i, bulk))
+                    if (CheckExport((entry as VfsEntry)?.Vfs.Name ?? "", cancellationToken, result.Package, i, bulk))
                         break;
                 }
 
@@ -1250,12 +1251,12 @@ public class CUE4ParseViewModel : ViewModel
 
         for (var i = result.InclusiveStart; i < result.ExclusiveEnd; i++)
         {
-            if (CheckExport(cancellationToken, result.Package, i))
+            if (CheckExport((entry as VfsEntry)?.Vfs.Name ?? "", cancellationToken, result.Package, i))
                 break;
         }
     }
 
-    private bool CheckExport(CancellationToken cancellationToken, IPackage pkg, int index, EBulkType bulk = EBulkType.None) // return true once you want to stop searching for exports
+    private bool CheckExport(string vfsName, CancellationToken cancellationToken, IPackage pkg, int index, EBulkType bulk = EBulkType.None) // return true once you want to stop searching for exports
     {
         var isNone = bulk == EBulkType.None;
         var updateUi = !HasFlag(bulk, EBulkType.Auto);
@@ -1281,7 +1282,7 @@ public class CUE4ParseViewModel : ViewModel
             {
                 if (saveTextures)
                 {
-                    SaveExport(texture);
+                    SaveExport(vfsName, texture);
                 }
 
                 if (updateUi)
@@ -1628,7 +1629,7 @@ public class CUE4ParseViewModel : ViewModel
             case UAnimationAsset when HasFlag(bulk, EBulkType.Animations):
             case UWorld when HasFlag(bulk, EBulkType.Worlds):
             {
-                SaveExport(pointer.Object.Value);
+                SaveExport(vfsName, pointer.Object.Value);
                 return true;
             }
             default:
@@ -1785,11 +1786,11 @@ public class CUE4ParseViewModel : ViewModel
         });
     }
 
-    private void SaveExport(UObject export)
+    private void SaveExport(string vfsName, UObject export)
     {
         try
         {
-            ExportSessionViewModel.Instance.Session.Add(export);
+            ExportSessionViewModel.Instance.Session.Add(export, vfsName);
         }
         catch (Exception e)
         {
@@ -1801,7 +1802,7 @@ public class CUE4ParseViewModel : ViewModel
     {
         try
         {
-            ExportSessionViewModel.Instance.Session.Add(new RawDataExporter(entry, Provider));
+            ExportSessionViewModel.Instance.Session.Add(new RawDataExporter(entry, Provider), (entry as VfsEntry)?.Vfs.Name ?? "");
         }
         catch (Exception e)
         {
